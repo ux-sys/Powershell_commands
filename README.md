@@ -267,3 +267,209 @@ Copy code
 
 
 
+---
+I want to learn more about wmi cim to query windows and learn about local settings and eventually AD.
+So here seems to be the important stuff:
+Windows version
+NT kernel version
+environment variables 
+what user I am
+what groups I belong to on the local machine and what privileges they grant and what's normal
+
+what important software is installed
+process & services running
+network info
+
+
+I know  a few commands for these, but I want the old cmd way and the new powershell way
+ChatGPT said:
+
+Great goals — understanding WMI (Windows Management Instrumentation) and CIM (Common Information Model) is key to mastering system introspection in Windows, both locally and across domains (including AD environments).
+
+You're right to split this into:
+
+The "old way": Using classic CMD tools (systeminfo, net, tasklist, etc.)
+
+The "new way": Using PowerShell with WMI (via Get-WmiObject, now deprecated) and CIM (Get-CimInstance, the modern preferred way)
+
+Let’s break your goals down into a task list, with both CMD and PowerShell methods shown for each.
+
+✅ 1. Windows Version
+
+CMD:
+
+ver
+systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+
+
+PowerShell:
+
+(Get-CimInstance -ClassName Win32_OperatingSystem).Caption
+(Get-CimInstance -ClassName Win32_OperatingSystem).Version
+
+✅ 2. NT Kernel Version
+
+CMD:
+
+ver
+
+
+PowerShell:
+
+[System.Environment]::OSVersion.Version
+(Get-CimInstance -ClassName Win32_OperatingSystem).Version
+
+✅ 3. Environment Variables
+
+CMD:
+
+set
+
+
+PowerShell:
+
+Get-ChildItem Env:
+
+✅ 4. Current User Info
+
+CMD:
+
+whoami
+echo %USERNAME%
+
+
+PowerShell:
+
+whoami
+$env:USERNAME
+[System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+✅ 5. Group Membership & Privileges
+
+CMD:
+
+whoami /groups
+net user %USERNAME%
+
+
+PowerShell:
+
+whoami /groups  # Still works here
+(Get-LocalUser -Name $env:USERNAME).PrincipalSource
+Get-LocalGroupMember -Group "Administrators"
+
+
+To see privileges (like SeDebugPrivilege, etc.):
+
+whoami /priv
+
+✅ 6. Installed Software
+
+CMD:
+
+wmic product get name,version
+
+
+⚠️ This is slow and unreliable in modern Windows. Better to use PowerShell.
+
+PowerShell:
+
+Get-CimInstance -ClassName Win32_Product | Select-Object Name, Version
+# Better: Use the registry for more accurate results:
+Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
+    Select-Object DisplayName, DisplayVersion, Publisher, InstallDate
+
+✅ 7. Running Processes & Services
+
+CMD:
+
+tasklist
+net start
+sc query
+
+
+PowerShell:
+
+Get-Process
+Get-Service | Where-Object {$_.Status -eq 'Running'}
+Get-CimInstance -ClassName Win32_Process
+
+✅ 8. Network Information
+
+CMD:
+
+ipconfig /all
+netstat -ano
+
+
+PowerShell:
+
+Get-NetIPAddress
+Get-NetIPConfiguration
+Get-NetTCPConnection
+
+Bonus: Active Directory Context
+
+Once you're in an AD environment:
+
+Get current domain:
+
+(Get-CimInstance Win32_ComputerSystem).Domain
+
+
+Who is the domain controller:
+
+nltest /dclist:yourdomain.local
+
+
+AD user info (if RSAT is installed):
+
+Get-ADUser $env:USERNAME -Properties *
+
+🧠 Suggested Learning Path
+
+Understand WMI vs CIM:
+
+Get-WmiObject is older; replaced by Get-CimInstance (which uses WSMan instead of DCOM).
+
+CIM is more firewall-friendly and works remotely better.
+
+Explore Namespaces and Classes:
+
+Most of what you want is in: root\cimv2
+
+Use: Get-CimClass or Get-WmiObject -List to explore
+
+Learn Key WMI/CIM Classes:
+
+Win32_OperatingSystem
+
+Win32_ComputerSystem
+
+Win32_LogicalDisk
+
+Win32_NetworkAdapterConfiguration
+
+Win32_UserAccount
+
+Win32_Group
+
+Win32_Process
+
+Win32_Service
+
+Win32_Product (for installed software)
+
+🚀 Pro Tip: Use CIM Sessions for Remote Queries
+
+Once you're ready:
+
+$sess = New-CimSession -ComputerName REMOTE-PC
+Get-CimInstance -ClassName Win32_OperatingSystem -CimSession $sess
+
+
+Would you like a PowerShell cheat sheet or interactive lab exercises to help practice this hands-on?
+
+
+
+
